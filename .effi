@@ -3,3 +3,4 @@ name=engine
 
 [dev]
 run=go run .
+build=go build -o target/engine
