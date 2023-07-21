@@ -1,6 +1,8 @@
 package engine
 
 import (
+	"unsafe"
+
 	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/go-gl/mathgl/mgl32"
 )
@@ -13,10 +15,11 @@ type Vertex struct {
 
 type Mesh struct {
   vertices []Vertex
+  triangles []uint32
   vaoHandle uint32
 }
 
-func NewMesh(glVertices []float32) *Mesh {
+func NewMesh(glVertices []float32, triangles []uint32) *Mesh {
   vertices := make([]Vertex, 0)
   for i := 0; i < len(glVertices); i += 8 {
     vertex := Vertex{}
@@ -37,7 +40,7 @@ func NewMesh(glVertices []float32) *Mesh {
     vertices = append(vertices, vertex)
   }
 
-  return &Mesh{vertices: vertices}
+  return &Mesh{vertices: vertices, triangles: triangles}
 }
 
 func (mesh *Mesh) CreateBuffers() {
@@ -47,11 +50,17 @@ func (mesh *Mesh) CreateBuffers() {
 
   var vboHandle uint32
   gl.GenBuffers(1, &vboHandle)
+
+  var eboHandle uint32
+  gl.GenBuffers(1, &eboHandle)
  
   mesh.Bind()
 
   gl.BindBuffer(gl.ARRAY_BUFFER, vboHandle)
   gl.BufferData(gl.ARRAY_BUFFER, len(vertices) * 4, gl.Ptr(vertices), gl.STATIC_DRAW)
+
+  gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, eboHandle)
+  gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, len(mesh.triangles) * 4, gl.Ptr(mesh.triangles), gl.STATIC_DRAW)
 
   stride := int32((3 * 4) + (3 * 4) + (2 * 4))  // 4 = size of float in bytes
   offset := 0
@@ -80,7 +89,8 @@ func (mesh *Mesh) Unbind() {
 }
 
 func (mesh *Mesh) Draw() {
-  gl.DrawArrays(gl.TRIANGLES, 0, int32(len(mesh.vertices)))
+  gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
+  gl.DrawElements(gl.TRIANGLES, int32(len(mesh.triangles)), gl.UNSIGNED_INT, unsafe.Pointer(nil))
 }
 
 func (mesh *Mesh) VertexSlice() (vertices []float32) {
